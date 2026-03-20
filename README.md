@@ -1,145 +1,78 @@
-# Minimum Viable Depth: How Many Layers Does an LLM Really Need?
+# Minimum Viable Depth: How Many Transformer Layers Do LLMs Really Need?
 
-**NeurIPS 2026 Submission — nips-layerdepth**
+**NeurIPS 2026 — `nips-layerdepth`**
 
-## TL;DR
+## Abstract
 
-Large language models use all layers for every token regardless of task difficulty.
-We systematically measure the **Minimum Viable Depth (MVD)** — the fewest transformer
-layers needed to maintain task performance — and derive a **task-complexity → depth
-scaling law**. Our adaptive depth selector achieves 1.4–2.1× inference speedup with
-<2% quality loss across reasoning, knowledge, and generation benchmarks.
-
-## Motivation
-
-- A 64-layer model answering "What is 2+2?" uses the same compute as solving IMO problems
-- LayerSkip (Meta 2024) showed early-exit is viable but uses a fixed exit strategy
-- FlexiDepth (2025) demonstrated skipping 8/32 layers with minimal loss — but why 8?
-- No systematic study maps **what tasks need what depth** with a principled metric
-
-We fill this gap: measure, model, and exploit the depth–task relationship.
-
-## Key Contributions
-
-1. **MVD Measurement Protocol** — Layer knockout methodology (single, contiguous, and
-   selected-subset removal) across 12 benchmark categories with statistical rigor
-2. **Task Complexity → Depth Scaling Law** — Empirical power-law fit:
-   `MVD(task) = α · C(task)^β + γ` where C is a multi-dimensional complexity score
-3. **Adaptive Depth Selector** — Lightweight router (< 0.1% params) that predicts
-   optimal exit layer per-input, trained on MVD labels
-4. **Layer Stitching Adapters** — Small residual adapters that recover quality when
-   skipping layers, enabling non-contiguous depth reduction
-
-## Models
-
-| Model | Layers | Params | Role |
-|---|---|---|---|
-| Qwen3.5-27B | 64 | 27B | Primary target — deep enough for fine-grained MVD curves |
-| Qwen3.5-9B | 40 | 9B | Validation — test scaling law transferability |
-| Qwen3-8B | 36 | 8B | Ablation — older architecture comparison |
-
-## Hardware
-
-- **Primary**: 8× A100-80GB (single node, NVLink)
-- **Inference profiling**: 1× A100-80GB per configuration
-- **Storage**: ~200GB for model weights + checkpoints
+Large language models run a fixed stack of transformer layers for every input, even when shallow computation would suffice. This work defines and measures **Minimum Viable Depth (MVD)**—the smallest number of layers (or layer subsets) needed to preserve benchmark-level performance—and connects MVD to task difficulty via empirical **depth scaling laws**. Using **Qwen/Qwen3.5-27B** (64 layers) as the primary subject, we run **single-layer knockout**, **contiguous block knockout**, **multi-metric importance ranking**, **depth scaling-law fitting**, and **adaptive depth selection** (lightweight router trained with REINFORCE-style signals). The full replication suite is designed for **≈3200 GPU-hours** on modern datacenter GPUs; scripts auto-detect **4–8× NVIDIA A100-class** nodes and set `NUM_GPUS` / `CUDA_VISIBLE_DEVICES` accordingly.
 
 ## Quick Start
 
 ```bash
-# Environment
-conda create -n layerdepth python=3.11
-conda activate layerdepth
-pip install -r requirements.txt
-
-# Layer knockout sweep (single GPU, Qwen3-8B smoke test)
-python src/knockout.py \
-  --model Qwen3-8B \
-  --knockout-type contiguous \
-  --start-layer 4 --end-layer 32 \
-  --benchmarks gsm8k,mmlu,humaneval \
-  --output results/knockout_qwen3_8b.json
-
-# Full MVD measurement (8×A100, Qwen3.5-27B)
-torchrun --nproc_per_node=8 src/knockout.py \
-  --model Qwen3.5-27B \
-  --knockout-type all \
-  --benchmarks full \
-  --output results/knockout_qwen35_27b.json
-
-# Fit scaling law
-python src/fit_scaling_law.py \
-  --knockout-results results/knockout_qwen35_27b.json \
-  --output results/scaling_law.json
-
-# Train adaptive depth selector
-torchrun --nproc_per_node=8 src/train_selector.py \
-  --model Qwen3.5-27B \
-  --mvd-labels results/scaling_law.json \
-  --output checkpoints/depth_selector/
+git clone https://github.com/<your-org>/nips-layerdepth.git
+cd nips-layerdepth
+chmod +x setup.sh scripts/run_all_experiments.sh
+./setup.sh
+conda activate nips-layerdepth   # or: conda activate "${NIPS_CONDA_ENV:-nips-layerdepth}"
+./scripts/run_all_experiments.sh
 ```
+
+Set `HF_TOKEN` if gated models require authentication. Override cache with `HF_HOME` / `TRANSFORMERS_CACHE` as needed.
+
+## Hardware
+
+- **Recommended:** 4–8× **NVIDIA A100** (40GB or 80GB) on a single node; GPU count is **auto-detected** at runtime (`scripts/gpu_utils.sh` → `NUM_GPUS`, `CUDA_VISIBLE_DEVICES`).
+- **Primary model:** `Qwen/Qwen3.5-27B` — plan for **multi-GPU** memory and throughput; smaller smoke configs can be added in `configs/` for debugging.
+- **Budget:** approximately **3200 GPU-hours** for the full paper-scale pipeline (knockout sweeps + selector + analysis).
 
 ## Project Structure
 
 ```
 nips-layerdepth/
 ├── README.md
-├── PROPOSAL.md          # Detailed research proposal
-├── PAPERS.md            # Related work bibliography
-├── PLAN.md              # Week-by-week execution plan
-├── EXPERIMENTS.md       # Experiment log and results
+├── setup.sh
 ├── requirements.txt
-├── configs/
-│   ├── knockout_sweep.yaml
-│   ├── selector_train.yaml
-│   └── stitching_adapter.yaml
-├── src/
-│   ├── knockout.py          # Layer knockout engine
-│   ├── complexity.py        # Task complexity measurement
-│   ├── fit_scaling_law.py   # MVD scaling law fitting
-│   ├── train_selector.py    # Adaptive depth selector training
-│   ├── stitching.py         # Layer stitching adapters
-│   ├── model_surgery.py     # Model manipulation utilities
-│   └── eval_harness.py      # Unified evaluation
-├── scripts/
-│   ├── run_knockout_sweep.sh
-│   ├── run_selector_train.sh
-│   └── run_full_pipeline.sh
-└── results/
-    └── .gitkeep
+├── PROPOSAL.md / PLAN.md / PAPERS.md / EXPERIMENTS.md   # research docs
+├── configs/          # YAML configs (e.g. knockout_config.yaml)
+├── scripts/          # runnable pipeline + analysis entrypoints
+├── src/              # library / modules
+├── results/          # experiment outputs (generated)
+└── logs/             # run logs (generated)
 ```
 
-## Benchmarks
+## Experiments Overview
 
-| Category | Benchmarks | Complexity Range |
-|---|---|---|
-| Arithmetic | GSM8K, MATH-500, MGSM | Low → High |
-| Knowledge | MMLU (57 subjects), ARC-C, TriviaQA | Medium |
-| Reasoning | BBH (27 tasks), GPQA, LogiQA | High |
-| Code | HumanEval, MBPP, LiveCodeBench | Medium → High |
-| Language | HellaSwag, WinoGrande, PIQA | Low |
-| Long context | RULER, LongBench | Variable |
+| Track | Description |
+|--------|-------------|
+| Single-layer knockout | Ablate one layer at a time; measure GSM8K / MMLU (and extensions). |
+| Block knockout | Contiguous blocks (e.g. sizes 2, 4, 8, 16) with resume support. |
+| Importance ranking | Aggregate ranking from gradient / activation / Fisher-style proxies. |
+| Depth scaling law | Fit MVD vs. complexity; thresholded recovery analysis (e.g. 0.95). |
+| Adaptive depth selector | Train small router (REINFORCE); evaluate adaptive depth policies. |
+| MVD + adaptive eval | Fit MVD curves and run adaptive-depth evaluation on held-out tasks. |
 
-## Expected Results
+Orchestration: `scripts/run_all_experiments.sh` (calls `layer_knockout.py`, `run_block_knockout.py`, `run_importance_ranking.py`, `run_scaling_law_analysis.py`, `train_depth_selector.py`, `fit_mvd.py`, `eval_adaptive_depth.py`).
 
-| Configuration | Speedup | Quality Loss | Method |
-|---|---|---|---|
-| Fixed exit @ 75% depth | 1.33× | ~1.5% avg | Baseline |
-| MVD-guided static | 1.5–1.8× | <1% on easy tasks | Our scaling law |
-| Adaptive selector | 1.4–2.1× | <2% worst-case | Our full method |
-| + Stitching adapters | 1.4–2.1× | <1% worst-case | Our full method |
+## Timeline (indicative)
 
-## Citation
+| Phase | Focus |
+|--------|--------|
+| Months 1–2 | Knockout infrastructure, benchmarks, statistical harness |
+| Months 3–4 | Block + importance metrics; scaling-law data collection |
+| Months 5–6 | Adaptive selector training, MVD fitting, paper figures |
+| Month 7 | Ablations, robustness, writing & internal review |
+
+## BibTeX
 
 ```bibtex
 @inproceedings{layerdepth2026,
-  title={Minimum Viable Depth: How Many Layers Does an LLM Really Need?},
-  author={Anonymous},
-  booktitle={NeurIPS},
-  year={2026}
+  title     = {Minimum Viable Depth: How Many Transformer Layers Do {LLMs} Really Need?},
+  author    = {Anonymous},
+  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
+  year      = {2026}
 }
 ```
 
 ## License
 
-MIT
+MIT License — see [LICENSE](LICENSE) if present in the repository root, or include the standard MIT text in your distribution.
