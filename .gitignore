@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+*.pyo
+*.swp
+*.tmp
+*.pid
+.venv/
+*.log
+models/
+checkpoints/
+wandb/
+.cursor/
+.vscode/
+.DS_Store
+Thumbs.db
