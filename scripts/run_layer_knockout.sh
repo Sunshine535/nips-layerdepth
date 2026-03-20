@@ -27,10 +27,7 @@ echo " Config: ${CONFIG}"
 echo " Output: ${OUTPUT_DIR}"
 echo "========================================="
 
-torchrun \
-    --nproc_per_node=${NUM_GPUS} \
-    --master_port=${MASTER_PORT} \
-    "${SCRIPT_DIR}/layer_knockout.py" \
+python "${SCRIPT_DIR}/layer_knockout.py" \
     --config_path "${CONFIG}" \
     --output_dir "${OUTPUT_DIR}" \
     "$@"

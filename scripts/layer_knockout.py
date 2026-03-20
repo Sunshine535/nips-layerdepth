@@ -111,14 +111,12 @@ def eval_mmlu(model, tokenizer, cfg, max_samples=500) -> dict:
 
     for example in tqdm(dataset, desc="MMLU"):
         question = example["question"]
-        options = [example.get(f"choices", ["", "", "", ""])]
-        if "choices" in example:
-            opts = example["choices"]
-        else:
-            opts = [example.get(c, "") for c in ["A", "B", "C", "D"]]
+        options = example.get("choices", ["", "", "", ""])
+        if "choices" not in example:
+            options = [example.get(c, "") for c in ["A", "B", "C", "D"]]
 
         prompt = f"Question: {question}\n"
-        for i, opt in enumerate(opts if isinstance(opts, list) else [opts]):
+        for i, opt in enumerate(options if isinstance(options, list) else [options]):
             prompt += f"{choices[i]}. {opt}\n"
         prompt += "Answer with just the letter (A, B, C, or D):\n"
 
