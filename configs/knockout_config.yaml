@@ -1,0 +1,59 @@
+# LayerDepth Knockout Experiment Configuration
+# Model: Qwen/Qwen3.5-27B (64 layers) on 8x A100-80GB
+
+model:
+  name_or_path: "Qwen/Qwen3.5-27B"
+  torch_dtype: "bfloat16"
+  attn_implementation: "flash_attention_2"
+  num_layers: 64
+
+knockout:
+  modes:
+    - "single"       # Remove one layer at a time
+    - "prefix"       # Keep first k layers
+    - "importance"   # Remove by importance score
+
+  single:
+    layer_range: [0, 63]   # Test removing each layer
+
+  prefix:
+    k_values: [8, 16, 24, 32, 40, 48, 56, 60, 62]
+
+  importance:
+    metric: "gradient_norm"    # gradient_norm | activation_norm | fisher
+    calibration_samples: 256
+    removal_fractions: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6]
+
+benchmarks:
+  mmlu:
+    name: "cais/mmlu"
+    config: "all"
+    split: "test"
+    num_few_shot: 5
+    max_samples: 500
+  gsm8k:
+    name: "openai/gsm8k"
+    config: "main"
+    split: "test"
+    max_samples: 500
+  math:
+    name: "hendrycks/competition_math"
+    split: "test"
+    max_samples: 500
+  humaneval:
+    name: "openai/openai_humaneval"
+    split: "test"
+    max_samples: -1
+
+evaluation:
+  batch_size: 4
+  max_new_tokens: 512
+  temperature: 0.0
+
+mvd_fitting:
+  complexity_proxy: "few_shot_baseline_accuracy"
+  model_type: "power_law"   # linear | power_law | log
+
+output:
+  base_dir: "./results/layer_knockout"
+  save_modified_models: false
