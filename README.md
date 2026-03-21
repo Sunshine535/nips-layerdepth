@@ -13,7 +13,7 @@ git clone https://github.com/<your-org>/nips-layerdepth.git
 cd nips-layerdepth
 chmod +x setup.sh scripts/run_all_experiments.sh
 ./setup.sh
-conda activate nips-layerdepth   # or: conda activate "${NIPS_CONDA_ENV:-nips-layerdepth}"
+
 ./scripts/run_all_experiments.sh
 ```
 
