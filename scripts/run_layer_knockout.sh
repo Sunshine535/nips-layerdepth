@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Activate venv if available
+_PROJ_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+if [ -f "$_PROJ_ROOT/.venv/bin/activate" ]; then source "$_PROJ_ROOT/.venv/bin/activate"; fi
+export PATH="$HOME/.local/bin:$PATH"
+
 # ─── LayerDepth Knockout Experiment Launcher (8x A100-80GB) ───
 export HF_ENDPOINT='https://hf-mirror.com'
 export HF_HOME="${HF_HOME:-/home/nwh/.cache/huggingface}"
