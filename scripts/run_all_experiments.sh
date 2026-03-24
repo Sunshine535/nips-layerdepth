@@ -38,65 +38,107 @@ echo " LayerDepth — Full Experiment Pipeline"
 echo " Model: ${MODEL} | GPUs: ${NUM_GPUS} × ${GPU_CLASS}"
 echo "========================================="
 
-# Step 1: Single-layer knockout
+# === Parallel Block A: Steps 1 + 2 + 3 (independent analyses) ===
+echo "[Steps 1-3] Running in parallel on CUDA devices 0, 1, 2 (skip if phase already done)..."
+PIDS=()
+LABELS=()
+
 if ! is_phase_done 1; then
-    STEP1_DIR="${PROJECT_DIR}/results/layer_knockout"
-    mkdir -p "$STEP1_DIR"
-    echo "[Step 1/6] Single-layer knockout..."
-    python "${SCRIPT_DIR}/layer_knockout.py" \
-        --config_path "$CONFIG" --output_dir "$STEP1_DIR" \
-        --mode single --benchmarks gsm8k mmlu \
-        2>&1 | tee "${LOG_DIR}/01_single_knockout.log"
-    phase_done 1
+    (
+        export CUDA_VISIBLE_DEVICES=0
+        STEP1_DIR="${PROJECT_DIR}/results/layer_knockout"
+        mkdir -p "$STEP1_DIR"
+        echo "[Step 1/6] Single-layer knockout..."
+        python "${SCRIPT_DIR}/layer_knockout.py" \
+            --config_path "$CONFIG" --output_dir "$STEP1_DIR" \
+            --mode single --benchmarks gsm8k mmlu \
+            2>&1 | tee "${LOG_DIR}/01_single_knockout.log"
+        phase_done 1
+    ) &
+    PIDS+=($!)
+    LABELS+=("step1_knockout")
 fi
 
-# Step 2: Contiguous block knockout
 if ! is_phase_done 2; then
-    STEP2_DIR="${PROJECT_DIR}/results/block_knockout"
-    mkdir -p "$STEP2_DIR"
-    echo "[Step 2/6] Block knockout (sizes 2, 4, 8, 16)..."
-    python "${SCRIPT_DIR}/run_block_knockout.py" \
-        --model_path "$MODEL" --output_dir "$STEP2_DIR" \
-        --block_sizes 2 4 8 16 --benchmarks gsm8k mmlu --max_samples 200 --resume \
-        2>&1 | tee "${LOG_DIR}/02_block_knockout.log"
-    phase_done 2
+    (
+        export CUDA_VISIBLE_DEVICES=1
+        STEP2_DIR="${PROJECT_DIR}/results/block_knockout"
+        mkdir -p "$STEP2_DIR"
+        echo "[Step 2/6] Block knockout (sizes 2, 4, 8, 16)..."
+        python "${SCRIPT_DIR}/run_block_knockout.py" \
+            --model_path "$MODEL" --output_dir "$STEP2_DIR" \
+            --block_sizes 2 4 8 16 --benchmarks gsm8k mmlu --max_samples 200 --resume \
+            2>&1 | tee "${LOG_DIR}/02_block_knockout.log"
+        phase_done 2
+    ) &
+    PIDS+=($!)
+    LABELS+=("step2_block")
 fi
 
-# Step 3: Importance ranking (3 metrics)
 if ! is_phase_done 3; then
-    STEP3_DIR="${PROJECT_DIR}/results/importance"
-    mkdir -p "$STEP3_DIR"
-    echo "[Step 3/6] Layer importance ranking..."
-    python "${SCRIPT_DIR}/run_importance_ranking.py" \
-        --model_path "$MODEL" --output_dir "$STEP3_DIR" \
-        --cal_samples 100 --metrics gradient_norm activation_norm fisher \
-        2>&1 | tee "${LOG_DIR}/03_importance_ranking.log"
-    phase_done 3
+    (
+        export CUDA_VISIBLE_DEVICES=2
+        STEP3_DIR="${PROJECT_DIR}/results/importance"
+        mkdir -p "$STEP3_DIR"
+        echo "[Step 3/6] Layer importance ranking..."
+        python "${SCRIPT_DIR}/run_importance_ranking.py" \
+            --model_path "$MODEL" --output_dir "$STEP3_DIR" \
+            --cal_samples 100 --metrics gradient_norm activation_norm fisher \
+            2>&1 | tee "${LOG_DIR}/03_importance_ranking.log"
+        phase_done 3
+    ) &
+    PIDS+=($!)
+    LABELS+=("step3_importance")
 fi
 
-# Step 4: Depth scaling law analysis
+FAIL=0
+for j in "${!PIDS[@]}"; do
+    wait "${PIDS[$j]}" || { echo "ERROR: ${LABELS[$j]} failed"; FAIL=1; }
+done
+if [ "$FAIL" -ne 0 ]; then exit 1; fi
+
+# === Parallel Block B: Steps 4 + 5 ===
+echo "[Steps 4-5] Running in parallel on CUDA devices 0, 1 (skip if phase already done)..."
+PIDS=()
+LABELS=()
+
 if ! is_phase_done 4; then
-    STEP4_DIR="${PROJECT_DIR}/results/scaling_law"
-    mkdir -p "$STEP4_DIR"
-    echo "[Step 4/6] Scaling law analysis..."
-    python "${SCRIPT_DIR}/run_scaling_law_analysis.py" \
-        --model_path "$MODEL" --output_dir "$STEP4_DIR" \
-        --max_samples_per_task 100 --threshold 0.95 --resume \
-        2>&1 | tee "${LOG_DIR}/04_scaling_law.log"
-    phase_done 4
+    (
+        export CUDA_VISIBLE_DEVICES=0
+        STEP4_DIR="${PROJECT_DIR}/results/scaling_law"
+        mkdir -p "$STEP4_DIR"
+        echo "[Step 4/6] Scaling law analysis..."
+        python "${SCRIPT_DIR}/run_scaling_law_analysis.py" \
+            --model_path "$MODEL" --output_dir "$STEP4_DIR" \
+            --max_samples_per_task 100 --threshold 0.95 --resume \
+            2>&1 | tee "${LOG_DIR}/04_scaling_law.log"
+        phase_done 4
+    ) &
+    PIDS+=($!)
+    LABELS+=("step4_scaling")
 fi
 
-# Step 5: Train adaptive depth selector
 if ! is_phase_done 5; then
-    STEP5_DIR="${PROJECT_DIR}/results/depth_selector"
-    mkdir -p "$STEP5_DIR"
-    echo "[Step 5/6] Training depth selector (REINFORCE)..."
-    python "${SCRIPT_DIR}/train_depth_selector.py" \
-        --model_path "$MODEL" --output_dir "$STEP5_DIR" \
-        --train_gsm8k 300 --train_mmlu 300 --epochs 5 --lr 3e-4 --lam 0.3 \
-        2>&1 | tee "${LOG_DIR}/05_depth_selector.log"
-    phase_done 5
+    (
+        export CUDA_VISIBLE_DEVICES=1
+        STEP5_DIR="${PROJECT_DIR}/results/depth_selector"
+        mkdir -p "$STEP5_DIR"
+        echo "[Step 5/6] Training depth selector (REINFORCE)..."
+        python "${SCRIPT_DIR}/train_depth_selector.py" \
+            --model_path "$MODEL" --output_dir "$STEP5_DIR" \
+            --train_gsm8k 300 --train_mmlu 300 --epochs 5 --lr 3e-4 --lam 0.3 \
+            2>&1 | tee "${LOG_DIR}/05_depth_selector.log"
+        phase_done 5
+    ) &
+    PIDS+=($!)
+    LABELS+=("step5_selector")
 fi
+
+FAIL=0
+for j in "${!PIDS[@]}"; do
+    wait "${PIDS[$j]}" || { echo "ERROR: ${LABELS[$j]} failed"; FAIL=1; }
+done
+if [ "$FAIL" -ne 0 ]; then exit 1; fi
 
 # Step 6: MVD fitting + adaptive evaluation
 if ! is_phase_done 6; then
