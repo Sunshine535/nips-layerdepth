@@ -1,0 +1,38 @@
+2026-03-25 20:54:19,058 [INFO] block_knockout: Loading model: Qwen/Qwen3.5-27B
+2026-03-25 20:54:20,461 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-25 20:54:20,723 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/Qwen/Qwen3.5-27B/b7ca741b86de18df552fd2cc952861e04621a4bd/config.json "HTTP/1.1 200 OK"
+2026-03-25 20:54:21,179 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-25 20:54:21,398 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/Qwen/Qwen3.5-27B/b7ca741b86de18df552fd2cc952861e04621a4bd/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-25 20:54:21,785 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/tokenizer_config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-25 20:54:22,020 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/Qwen/Qwen3.5-27B/b7ca741b86de18df552fd2cc952861e04621a4bd/tokenizer_config.json "HTTP/1.1 200 OK"
+2026-03-25 20:54:22,250 [INFO] httpx: HTTP Request: GET https://hf-mirror.com/api/models/Qwen/Qwen3.5-27B/tree/main/additional_chat_templates?recursive=false&expand=false "HTTP/1.1 404 Not Found"
+2026-03-25 20:54:22,575 [INFO] httpx: HTTP Request: GET https://hf-mirror.com/api/models/Qwen/Qwen3.5-27B/tree/main?recursive=true&expand=false "HTTP/1.1 200 OK"
+2026-03-25 20:54:24,238 [INFO] httpx: HTTP Request: GET https://hf-mirror.com/api/models/Qwen/Qwen3.5-27B "HTTP/1.1 200 OK"
+2026-03-25 20:54:24,764 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/config.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-25 20:54:24,989 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/Qwen/Qwen3.5-27B/b7ca741b86de18df552fd2cc952861e04621a4bd/config.json "HTTP/1.1 200 OK"
+`torch_dtype` is deprecated! Use `dtype` instead!
+2026-03-25 20:54:29,780 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/model.safetensors "HTTP/1.1 404 Not Found"
+2026-03-25 20:54:30,149 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/Qwen/Qwen3.5-27B/resolve/main/model.safetensors.index.json "HTTP/1.1 307 Temporary Redirect"
+2026-03-25 20:54:30,495 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/api/resolve-cache/models/Qwen/Qwen3.5-27B/b7ca741b86de18df552fd2cc952861e04621a4bd/model.safetensors.index.json "HTTP/1.1 200 OK"
+2026-03-25 20:54:30,718 [INFO] httpx: HTTP Request: GET https://hf-mirror.com/api/models/Qwen/Qwen3.5-27B/revision/main "HTTP/1.1 200 OK"
+Fetching 11 files:   0%|          | 0/11 [00:00<?, ?it/s]Fetching 11 files: 100%|██████████| 11/11 [00:00<00:00, 40189.32it/s]
+Traceback (most recent call last):
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/scripts/run_block_knockout.py", line 246, in <module>
+    main()
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/scripts/run_block_knockout.py", line 179, in main
+    model = AutoModelForCausalLM.from_pretrained(
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/models/auto/auto_factory.py", line 374, in from_pretrained
+    return model_class.from_pretrained(
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/modeling_utils.py", line 4094, in from_pretrained
+    model = cls(config, *model_args, **model_kwargs)
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/models/qwen3_5/modeling_qwen3_5.py", line 1800, in __init__
+    super().__init__(config)
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/modeling_utils.py", line 1260, in __init__
+    self.config._attn_implementation_internal = self._check_and_adjust_attn_implementation(
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/modeling_utils.py", line 1887, in _check_and_adjust_attn_implementation
+    applicable_attn_implementation = self.get_correct_attn_implementation(
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/modeling_utils.py", line 1928, in get_correct_attn_implementation
+    self._flash_attn_2_can_dispatch(is_init_check)
+  File "/ytech_m2v4_hdd/mengzijie/nips-layerdepth/.venv/lib/python3.10/site-packages/transformers/modeling_utils.py", line 1587, in _flash_attn_2_can_dispatch
+    raise ImportError(f"{preface} the package flash_attn seems to be not installed. {install_message}")
+ImportError: FlashAttention2 has been toggled on, but it cannot be used due to the following error: the package flash_attn seems to be not installed. Please refer to the documentation of https://huggingface.co/docs/transformers/perf_infer_gpu_one#flashattention-2 to install Flash Attention 2.
