@@ -5,6 +5,7 @@ ENV_NAME="nips-layerdepth"
 
 echo "============================================"
 echo " Environment Setup (uv + PyTorch 2.10 + CUDA 12.8)"
+echo " Requires: Python >= 3.10"
 echo "============================================"
 
 # --- Install uv if missing ---
@@ -19,8 +20,11 @@ fi
 # --- Create venv ---
 VENV_DIR="$PROJ_DIR/.venv"
 if [ ! -d "$VENV_DIR" ]; then
-    echo "[2/5] Creating Python 3.10 venv ..."
-    uv venv "$VENV_DIR" --python 3.10 2>/dev/null || uv venv "$VENV_DIR"
+    echo "[2/5] Creating venv ..."
+    uv venv "$VENV_DIR" --python 3.12 2>/dev/null \
+        || uv venv "$VENV_DIR" --python 3.11 2>/dev/null \
+        || uv venv "$VENV_DIR" --python 3.10 2>/dev/null \
+        || uv venv "$VENV_DIR"
 else
     echo "[2/5] Venv exists: $VENV_DIR"
 fi

@@ -26,6 +26,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.layer_surgery import compute_layer_importance, get_decoder_layers
+from src.model_utils import load_model_and_tokenizer, get_model_device
 
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
@@ -127,17 +128,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     logger.info("Loading model: %s", args.model_path)
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_path, trust_remote_code=True, padding_side="left",
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_path, torch_dtype=torch.bfloat16,
-        device_map="auto", trust_remote_code=True,
-        attn_implementation="flash_attention_2",
-    )
+    model, tokenizer = load_model_and_tokenizer(args.model_path)
 
     n_layers = len(get_decoder_layers(model))
     logger.info("Model loaded: %d layers", n_layers)
@@ -151,7 +142,7 @@ def main():
 
     for metric in args.metrics:
         logger.info("Computing importance: %s", metric)
-        scores = compute_layer_importance(model, cal_loader, metric, device="cuda")
+        scores = compute_layer_importance(model, cal_loader, metric, device=str(get_model_device(model)))
         all_scores[metric] = scores
         all_ranks[metric] = rank_layers(scores)
         logger.info("  top-5 layers: %s",

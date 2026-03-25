@@ -30,6 +30,7 @@ from src.layer_surgery import (
     remove_layers,
     set_decoder_layers,
 )
+from src.model_utils import load_model_and_tokenizer, get_model_device
 
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
@@ -86,7 +87,7 @@ def extract_answer_math(text: str) -> str:
 @torch.no_grad()
 def generate_answer(model, tokenizer, prompt: str, max_new_tokens: int = 512) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
-                       max_length=2048).to(model.device)
+                       max_length=2048).to(get_model_device(model))
     outputs = model.generate(
         **inputs, max_new_tokens=max_new_tokens,
         do_sample=False, pad_token_id=tokenizer.pad_token_id,
@@ -299,7 +300,7 @@ def run_importance_knockout(model, tokenizer, cfg, benchmarks, output_dir):
     cal_ds = SimpleTextDataset(cal_texts, tokenizer, max_length=256)
     cal_loader = DataLoader(cal_ds, batch_size=4, shuffle=False)
 
-    importance = compute_layer_importance(model, cal_loader, metric, str(model.device))
+    importance = compute_layer_importance(model, cal_loader, metric, str(get_model_device(model)))
     importance_path = os.path.join(output_dir, "layer_importance.json")
     with open(importance_path, "w") as f:
         json.dump({"metric": metric, "importance": importance}, f, indent=2)
@@ -339,20 +340,10 @@ def main():
     os.makedirs(output_dir, exist_ok=True)
 
     logger.info("Loading model: %s", cfg["model"]["name_or_path"])
-    tokenizer = AutoTokenizer.from_pretrained(
-        cfg["model"]["name_or_path"], trust_remote_code=True, padding_side="left"
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model = AutoModelForCausalLM.from_pretrained(
+    model, tokenizer = load_model_and_tokenizer(
         cfg["model"]["name_or_path"],
         torch_dtype=getattr(torch, cfg["model"]["torch_dtype"]),
-        device_map="auto",
-        trust_remote_code=True,
-        attn_implementation=cfg["model"].get("attn_implementation", "flash_attention_2"),
     )
-    model.eval()
 
     n_layers = len(get_decoder_layers(model))
     logger.info("Model loaded with %d decoder layers", n_layers)

@@ -13,6 +13,10 @@ wandb/
 .DS_Store
 Thumbs.db
 
+# Logs
+logs/
+run.log
+
 # Large experiment artifacts (use collect_results.sh to archive)
 results_archive/*.tar.gz
 checkpoints/**/*.pt

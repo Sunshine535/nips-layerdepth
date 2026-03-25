@@ -22,6 +22,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.layer_surgery import get_decoder_layers, set_decoder_layers
+from src.model_utils import load_model_and_tokenizer, get_model_device
 
 os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
@@ -58,7 +59,7 @@ def extract_answer_gsm8k(text: str) -> str:
 @torch.no_grad()
 def generate_answer(model, tokenizer, prompt: str, max_new_tokens: int = 512) -> str:
     inputs = tokenizer(prompt, return_tensors="pt", truncation=True,
-                       max_length=2048).to(model.device)
+                       max_length=2048).to(get_model_device(model))
     outputs = model.generate(
         **inputs, max_new_tokens=max_new_tokens,
         do_sample=False, pad_token_id=tokenizer.pad_token_id,
@@ -170,18 +171,7 @@ def main():
     os.makedirs(args.output_dir, exist_ok=True)
 
     logger.info("Loading model: %s", args.model_path)
-    tokenizer = AutoTokenizer.from_pretrained(
-        args.model_path, trust_remote_code=True, padding_side="left",
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
-
-    model = AutoModelForCausalLM.from_pretrained(
-        args.model_path, torch_dtype=torch.bfloat16,
-        device_map="auto", trust_remote_code=True,
-        attn_implementation="flash_attention_2",
-    )
-    model.eval()
+    model, tokenizer = load_model_and_tokenizer(args.model_path)
 
     original_layers = list(get_decoder_layers(model))
     n_layers = len(original_layers)
