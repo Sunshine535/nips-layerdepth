@@ -92,7 +92,7 @@ def get_cls_embedding(model, tokenizer, prompt: str):
                        max_length=512).to(model.device)
     outputs = model(input_ids=inputs.input_ids, output_hidden_states=True)
     last_hidden = outputs.hidden_states[-1]
-    return last_hidden[:, 0, :]  # (1, hidden_dim)
+    return last_hidden[:, 0, :].to(model.device)  # (1, hidden_dim)
 
 
 @torch.no_grad()
