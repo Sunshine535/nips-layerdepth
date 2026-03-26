@@ -46,12 +46,7 @@ if [ "$NUM_PAIRS" -lt 1 ]; then NUM_PAIRS=1; fi
 gpu_pair() {
     local pair_idx=$1
     local start=$((pair_idx * GPUS_PER_TASK))
-    local devices=""
-    for ((i=0; i<GPUS_PER_TASK; i++)); do
-        [ -n "$devices" ] && devices="${devices},"
-        devices="${devices}$((start + i))"
-    done
-    echo "$devices"
+    gpu_range $start $GPUS_PER_TASK
 }
 
 echo "========================================="

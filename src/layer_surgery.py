@@ -40,6 +40,10 @@ def set_decoder_layers(model: PreTrainedModel, new_layers: nn.ModuleList):
     else:
         raise AttributeError("Cannot set decoder layers.")
 
+    for new_idx, layer in enumerate(new_layers):
+        if hasattr(layer, "self_attn") and hasattr(layer.self_attn, "layer_idx"):
+            layer.self_attn.layer_idx = new_idx
+
 
 def remove_layers(
     model: PreTrainedModel,
