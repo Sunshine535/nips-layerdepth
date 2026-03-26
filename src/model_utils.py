@@ -15,12 +15,16 @@ logger = logging.getLogger(__name__)
 
 
 def _best_attn_implementation() -> str:
-    """Return the best available attention implementation."""
+    """Return the best available attention implementation, with runtime validation."""
     try:
-        import flash_attn  # noqa: F401
+        from flash_attn import flash_attn_func
+        q = torch.randn(1, 1, 2, 64, device="cuda", dtype=torch.bfloat16)
+        k = torch.randn(1, 1, 2, 64, device="cuda", dtype=torch.bfloat16)
+        v = torch.randn(1, 1, 2, 64, device="cuda", dtype=torch.bfloat16)
+        flash_attn_func(q, k, v)
         return "flash_attention_2"
-    except ImportError:
-        logger.info("flash-attn not installed, falling back to sdpa")
+    except Exception as exc:
+        logger.info("flash-attn unavailable or broken (%s), using sdpa", exc)
         return "sdpa"
 
 

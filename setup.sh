@@ -38,9 +38,11 @@ uv pip install "torch==2.10.0" "torchvision" "torchaudio" \
     --extra-index-url https://mirrors.aliyun.com/pypi/simple/ \
     --index-strategy unsafe-best-match
 
-# --- Optional: flash-attention ---
-echo "[5/5] Installing flash-attn (optional) ..."
+# --- Optional: flash-attention + linear attention ---
+echo "[5/5] Installing flash-attn + flash-linear-attention (optional) ..."
 uv pip install flash-attn --no-build-isolation 2>/dev/null || echo "  flash-attn skipped (optional)"
+uv pip install flash-linear-attention causal-conv1d --no-build-isolation 2>/dev/null \
+    || echo "  flash-linear-attention skipped (optional, needed for Qwen3.5 linear attn)"
 
 # --- Verify ---
 echo ""
