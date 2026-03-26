@@ -38,11 +38,17 @@ uv pip install "torch==2.10.0" "torchvision" "torchaudio" \
     --extra-index-url https://mirrors.aliyun.com/pypi/simple/ \
     --index-strategy unsafe-best-match
 
-# --- Optional: flash-attention + linear attention ---
-echo "[5/5] Installing flash-attn + flash-linear-attention (optional) ..."
-uv pip install flash-attn --no-build-isolation 2>/dev/null || echo "  flash-attn skipped (optional)"
-uv pip install flash-linear-attention causal-conv1d --no-build-isolation 2>/dev/null \
-    || echo "  flash-linear-attention skipped (optional, needed for Qwen3.5 linear attn)"
+# --- Optional: flash-attention + linear attention (skip if already attempted) ---
+_FA_MARKER="$VENV_DIR/.flash_attn_attempted"
+if [ ! -f "$_FA_MARKER" ]; then
+    echo "[5/5] Installing flash-attn + flash-linear-attention (optional, first time only) ..."
+    uv pip install flash-attn --no-build-isolation 2>/dev/null || echo "  flash-attn skipped"
+    uv pip install flash-linear-attention causal-conv1d --no-build-isolation 2>/dev/null \
+        || echo "  flash-linear-attention skipped"
+    touch "$_FA_MARKER"
+else
+    echo "[5/5] Flash-attn already attempted (skip rebuild)"
+fi
 
 # --- Verify ---
 echo ""
