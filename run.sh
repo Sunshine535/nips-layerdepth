@@ -7,7 +7,7 @@ set -e
 PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$PROJ_DIR"
 
-export UV_CACHE_DIR="/tmp/uv-cache-$(hostname)"
+export UV_CACHE_DIR="$PROJ_DIR/.uv_cache"
 mkdir -p "$UV_CACHE_DIR"
 
 if [ -L "$PROJ_DIR/.venv" ]; then
@@ -41,7 +41,7 @@ echo "  Progress is shown below in real-time."
 echo "  To run in background: nohup bash run.sh > run.log 2>&1 &"
 echo ""
 
-bash scripts/run_all_experiments.sh 2>&1 | tee "$PROJ_DIR/run.log"
+bash scripts/run_all_experiments.sh 2>&1 | tee -a "$PROJ_DIR/run.log"
 EXIT_CODE=${PIPESTATUS[0]}
 
 echo ""
