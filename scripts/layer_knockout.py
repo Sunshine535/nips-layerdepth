@@ -32,7 +32,6 @@ from src.layer_surgery import (
 )
 from src.model_utils import load_model_and_tokenizer, get_model_device
 
-os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 logging.basicConfig(
     level=logging.INFO,

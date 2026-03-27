@@ -24,7 +24,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from src.layer_surgery import get_decoder_layers, set_decoder_layers
 from src.model_utils import load_model_and_tokenizer, get_model_device
 
-os.environ.setdefault("HF_ENDPOINT", "https://hf-mirror.com")
 
 logging.basicConfig(
     level=logging.INFO,
