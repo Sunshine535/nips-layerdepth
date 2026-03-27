@@ -32,3 +32,17 @@
 2026-03-27 16:43:22,994 [INFO] httpx: HTTP Request: GET https://hf-mirror.com/api/datasets/openai/gsm8k/tree/740312add88f781978c0658806c59bc2815b9866?recursive=false&expand=false "HTTP/1.1 200 OK"
 2026-03-27 16:43:23,437 [INFO] httpx: HTTP Request: HEAD https://hf-mirror.com/datasets/openai/gsm8k/resolve/740312add88f781978c0658806c59bc2815b9866/dataset_infos.json "HTTP/1.1 404 Not Found"
 2026-03-27 16:43:49,123 [INFO] importance_ranking: Computing importance: gradient_norm
+2026-03-27 16:48:12,974 [INFO] importance_ranking:   top-5 layers: [0, 50, 51, 3, 52]
+2026-03-27 16:48:12,977 [INFO] importance_ranking: Computing importance: activation_norm
+2026-03-27 16:48:31,394 [INFO] importance_ranking:   top-5 layers: [63, 62, 61, 60, 59]
+2026-03-27 16:48:31,394 [INFO] importance_ranking: Computing importance: fisher
+2026-03-27 16:50:01,690 [INFO] importance_ranking:   top-5 layers: [0, 50, 51, 3, 52]
+2026-03-27 16:50:01,697 [INFO] importance_ranking:   Spearman(gradient_norm, activation_norm) = 0.1914  (p=1.30e-01)
+2026-03-27 16:50:01,698 [INFO] importance_ranking:   Spearman(gradient_norm, fisher) = 1.0000  (p=0.00e+00)
+2026-03-27 16:50:01,698 [INFO] importance_ranking:   Spearman(activation_norm, gradient_norm) = 0.1914  (p=1.30e-01)
+2026-03-27 16:50:01,699 [INFO] importance_ranking:   Spearman(activation_norm, fisher) = 0.1914  (p=1.30e-01)
+2026-03-27 16:50:01,699 [INFO] importance_ranking:   Spearman(fisher, gradient_norm) = 1.0000  (p=0.00e+00)
+2026-03-27 16:50:01,700 [INFO] importance_ranking:   Spearman(fisher, activation_norm) = 0.1914  (p=1.30e-01)
+2026-03-27 16:50:01,718 [INFO] importance_ranking: Scores saved to /ytech_m2v4_hdd/mengzijie/nips-layerdepth/results/importance/importance_scores.json
+2026-03-27 16:50:31,268 [INFO] importance_ranking: Figure saved to /ytech_m2v4_hdd/mengzijie/nips-layerdepth/results/importance/importance_comparison.pdf
+2026-03-27 16:50:31,268 [INFO] importance_ranking: Done.
