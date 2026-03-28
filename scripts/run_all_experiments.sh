@@ -56,102 +56,67 @@ echo " Layout: ${NUM_PAIRS} concurrent instances (${GPUS_PER_TASK} GPUs each)"
 echo "========================================="
 
 # ═══════════════════════════════════════════════════════════════════════════
-# Block A — 4 independent tasks in parallel (uses all 8 GPUs)
-#   Pair 0 (GPU 0,1): Step 1  — layer knockout (single + prefix + importance)
-#   Pair 1 (GPU 2,3): Step 2  — block knockout
-#   Pair 2 (GPU 4,5): Step 3  — importance ranking
-#   Pair 3 (GPU 6,7): Step 4  — scaling law analysis
+# Block A — 4 independent tasks, scheduled in waves based on available GPUs
 # ═══════════════════════════════════════════════════════════════════════════
-echo ""
-echo "[Block A] Steps 1-4 in parallel — ${NUM_PAIRS} GPU pairs, all ${NUM_GPUS} GPUs active"
-PIDS=()
-LABELS=()
-PAIR_IDX=0
+
+BLOCK_A_STEPS=()
+BLOCK_A_CMDS=()
+BLOCK_A_LOGS=()
 
 if ! is_phase_done 1; then
-    if [ "$PAIR_IDX" -lt "$NUM_PAIRS" ]; then
-        (
-            export CUDA_VISIBLE_DEVICES=$(gpu_pair $PAIR_IDX)
-            STEP1_DIR="${PROJECT_DIR}/results/layer_knockout"
-            mkdir -p "$STEP1_DIR"
-            echo "[Step 1/6] Layer knockout — all modes (GPUs $CUDA_VISIBLE_DEVICES)..."
-            python "${SCRIPT_DIR}/layer_knockout.py" \
-                --config_path "$CONFIG" --output_dir "$STEP1_DIR" \
-                --mode all --benchmarks gsm8k mmlu \
-                2>&1 | tee "${LOG_DIR}/01_layer_knockout.log"
-            phase_done 1
-        ) &
-        PIDS+=($!)
-        LABELS+=("step1_knockout")
-        PAIR_IDX=$((PAIR_IDX + 1))
-    fi
+    BLOCK_A_STEPS+=(1)
+    BLOCK_A_CMDS+=("python ${SCRIPT_DIR}/layer_knockout.py --config_path $CONFIG --output_dir ${PROJECT_DIR}/results/layer_knockout --mode all --benchmarks gsm8k mmlu")
+    BLOCK_A_LOGS+=("${LOG_DIR}/01_layer_knockout.log")
 fi
-
 if ! is_phase_done 2; then
-    if [ "$PAIR_IDX" -lt "$NUM_PAIRS" ]; then
-        (
-            export CUDA_VISIBLE_DEVICES=$(gpu_pair $PAIR_IDX)
-            STEP2_DIR="${PROJECT_DIR}/results/block_knockout"
-            mkdir -p "$STEP2_DIR"
-            echo "[Step 2/6] Block knockout (GPUs $CUDA_VISIBLE_DEVICES)..."
-            python "${SCRIPT_DIR}/run_block_knockout.py" \
-                --model_path "$MODEL" --output_dir "$STEP2_DIR" \
-                --block_sizes 2 4 8 16 --benchmarks gsm8k mmlu --max_samples 200 --resume \
-                2>&1 | tee "${LOG_DIR}/02_block_knockout.log"
-            phase_done 2
-        ) &
-        PIDS+=($!)
-        LABELS+=("step2_block")
-        PAIR_IDX=$((PAIR_IDX + 1))
-    fi
+    BLOCK_A_STEPS+=(2)
+    BLOCK_A_CMDS+=("python ${SCRIPT_DIR}/run_block_knockout.py --model_path $MODEL --output_dir ${PROJECT_DIR}/results/block_knockout --block_sizes 2 4 8 16 --benchmarks gsm8k mmlu --max_samples 200 --resume")
+    BLOCK_A_LOGS+=("${LOG_DIR}/02_block_knockout.log")
 fi
-
 if ! is_phase_done 3; then
-    if [ "$PAIR_IDX" -lt "$NUM_PAIRS" ]; then
-        (
-            export CUDA_VISIBLE_DEVICES=$(gpu_pair $PAIR_IDX)
-            STEP3_DIR="${PROJECT_DIR}/results/importance"
-            mkdir -p "$STEP3_DIR"
-            echo "[Step 3/6] Layer importance ranking (GPUs $CUDA_VISIBLE_DEVICES)..."
-            python "${SCRIPT_DIR}/run_importance_ranking.py" \
-                --model_path "$MODEL" --output_dir "$STEP3_DIR" \
-                --cal_samples 100 --metrics gradient_norm activation_norm fisher \
-                2>&1 | tee "${LOG_DIR}/03_importance_ranking.log"
-            phase_done 3
-        ) &
-        PIDS+=($!)
-        LABELS+=("step3_importance")
-        PAIR_IDX=$((PAIR_IDX + 1))
-    fi
+    BLOCK_A_STEPS+=(3)
+    BLOCK_A_CMDS+=("python ${SCRIPT_DIR}/run_importance_ranking.py --model_path $MODEL --output_dir ${PROJECT_DIR}/results/importance --cal_samples 100 --metrics gradient_norm activation_norm fisher")
+    BLOCK_A_LOGS+=("${LOG_DIR}/03_importance_ranking.log")
 fi
-
 if ! is_phase_done 4; then
-    if [ "$PAIR_IDX" -lt "$NUM_PAIRS" ]; then
-        (
-            export CUDA_VISIBLE_DEVICES=$(gpu_pair $PAIR_IDX)
-            STEP4_DIR="${PROJECT_DIR}/results/scaling_law"
-            mkdir -p "$STEP4_DIR"
-            echo "[Step 4/6] Scaling law analysis (GPUs $CUDA_VISIBLE_DEVICES)..."
-            python "${SCRIPT_DIR}/run_scaling_law_analysis.py" \
-                --model_path "$MODEL" --output_dir "$STEP4_DIR" \
-                --max_samples_per_task 100 --threshold 0.95 --resume \
-                2>&1 | tee "${LOG_DIR}/04_scaling_law.log"
-            phase_done 4
-        ) &
-        PIDS+=($!)
-        LABELS+=("step4_scaling")
-        PAIR_IDX=$((PAIR_IDX + 1))
-    fi
+    BLOCK_A_STEPS+=(4)
+    BLOCK_A_CMDS+=("python ${SCRIPT_DIR}/run_scaling_law_analysis.py --model_path $MODEL --output_dir ${PROJECT_DIR}/results/scaling_law --max_samples_per_task 100 --threshold 0.95 --resume")
+    BLOCK_A_LOGS+=("${LOG_DIR}/04_scaling_law.log")
 fi
 
-FAIL=0
-for j in "${!PIDS[@]}"; do
-    wait "${PIDS[$j]}" || { echo "ERROR: ${LABELS[$j]} failed (exit $?)"; FAIL=1; }
+echo ""
+echo "[Block A] ${#BLOCK_A_STEPS[@]} tasks, ${NUM_PAIRS} GPU pairs — running in waves"
+
+IDX=0
+while [ "$IDX" -lt "${#BLOCK_A_STEPS[@]}" ]; do
+    PIDS=()
+    LABELS=()
+    WAVE_END=$((IDX + NUM_PAIRS))
+    [ "$WAVE_END" -gt "${#BLOCK_A_STEPS[@]}" ] && WAVE_END=${#BLOCK_A_STEPS[@]}
+    PAIR_SLOT=0
+    for ((i=IDX; i<WAVE_END; i++)); do
+        STEP_NUM=${BLOCK_A_STEPS[$i]}
+        mkdir -p "$(dirname "${BLOCK_A_LOGS[$i]}")"
+        (
+            export CUDA_VISIBLE_DEVICES=$(gpu_pair $PAIR_SLOT)
+            echo "[Step ${STEP_NUM}/6] (GPUs $CUDA_VISIBLE_DEVICES)..."
+            eval "${BLOCK_A_CMDS[$i]}" 2>&1 | tee "${BLOCK_A_LOGS[$i]}"
+            phase_done "$STEP_NUM"
+        ) &
+        PIDS+=($!)
+        LABELS+=("step${STEP_NUM}")
+        PAIR_SLOT=$((PAIR_SLOT + 1))
+    done
+    FAIL=0
+    for j in "${!PIDS[@]}"; do
+        wait "${PIDS[$j]}" || { echo "ERROR: ${LABELS[$j]} failed (exit $?)"; FAIL=1; }
+    done
+    if [ "$FAIL" -ne 0 ]; then
+        echo "[Block A] Some tasks failed. Check logs in ${LOG_DIR}/"
+        exit 1
+    fi
+    IDX=$WAVE_END
 done
-if [ "$FAIL" -ne 0 ]; then
-    echo "[Block A] Some tasks failed. Check logs in ${LOG_DIR}/"
-    exit 1
-fi
 echo "[Block A] All tasks completed."
 
 # ═══════════════════════════════════════════════════════════════════════════
