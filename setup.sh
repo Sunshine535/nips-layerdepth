@@ -4,46 +4,55 @@ PROJ_DIR="$(cd "$(dirname "$0")" && pwd)"
 ENV_NAME="nips-layerdepth"
 
 echo "============================================"
-echo " Environment Setup (uv + PyTorch 2.10 + CUDA 12.8)"
+echo " Environment Setup (venv + pip + PyTorch 2.10 + CUDA 12.8)"
 echo " Requires: Python >= 3.10"
 echo "============================================"
 
-# --- Install uv if missing ---
-if ! command -v uv &>/dev/null; then
-    echo "[1/5] Installing uv ..."
-    curl -LsSf https://astral.sh/uv/install.sh | sh
-    export PATH="$HOME/.local/bin:$PATH"
-else
-    echo "[1/5] uv already installed: $(uv --version)"
+# --- Pick Python (prefer 3.12 > 3.11 > 3.10) ---
+PYTHON_CMD=""
+for try in python3.12 python3.11 python3.10 python3; do
+    if command -v "$try" &>/dev/null; then
+        PYTHON_CMD="$try"
+        break
+    fi
+done
+if [ -z "$PYTHON_CMD" ]; then
+    echo "ERROR: Need python3.10+ (python3.12 / python3.11 / python3.10 / python3)."
+    exit 1
 fi
+echo "[1/5] Using: $($PYTHON_CMD --version)"
 
 # --- Create venv ---
 VENV_DIR="$PROJ_DIR/.venv"
 if [ ! -d "$VENV_DIR" ]; then
-    echo "[2/5] Creating venv ..."
-    uv venv "$VENV_DIR" --python 3.12 2>/dev/null \
-        || uv venv "$VENV_DIR" --python 3.11 2>/dev/null \
-        || uv venv "$VENV_DIR" --python 3.10 2>/dev/null \
-        || uv venv "$VENV_DIR"
+    echo "[2/5] Creating venv with $PYTHON_CMD ..."
+    "$PYTHON_CMD" -m venv "$VENV_DIR"
 else
     echo "[2/5] Venv exists: $VENV_DIR"
 fi
+# shellcheck disable=SC1090
 source "$VENV_DIR/bin/activate"
 
-# --- Install PyTorch CUDA + project dependencies (single resolve) ---
-echo "[3/5] Installing PyTorch 2.10.0 + CUDA 12.8 + project deps ..."
-uv pip install "torch==2.10.0" "torchvision" "torchaudio" \
+# Large wheels (NVIDIA CUDA libs): allow long pip timeouts
+export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-600}"
+
+echo "[3/5] Upgrading pip ..."
+python -m pip install -U pip setuptools wheel
+
+# --- Install PyTorch CUDA + project dependencies ---
+echo "[4/5] Installing PyTorch 2.10.0 + CUDA 12.8 + project deps ..."
+python -m pip install \
+    "torch==2.10.0" "torchvision" "torchaudio" \
     -r "$PROJ_DIR/requirements.txt" \
     --index-url https://download.pytorch.org/whl/cu128 \
-    --extra-index-url https://pypi.org/simple/ \
-    --index-strategy unsafe-best-match
+    --extra-index-url https://pypi.org/simple
 
 # --- Optional: flash-attention + linear attention (skip if already attempted) ---
 _FA_MARKER="$VENV_DIR/.flash_attn_attempted"
 if [ ! -f "$_FA_MARKER" ]; then
     echo "[5/5] Installing flash-attn + flash-linear-attention (optional, first time only) ..."
-    uv pip install flash-attn --no-build-isolation 2>/dev/null || echo "  flash-attn skipped"
-    uv pip install flash-linear-attention causal-conv1d --no-build-isolation 2>/dev/null \
+    python -m pip install flash-attn --no-build-isolation 2>/dev/null || echo "  flash-attn skipped"
+    python -m pip install flash-linear-attention causal-conv1d --no-build-isolation 2>/dev/null \
         || echo "  flash-linear-attention skipped"
     touch "$_FA_MARKER"
 else
