@@ -4,7 +4,7 @@
 model:
   name_or_path: "Qwen/Qwen3.5-27B"
   torch_dtype: "bfloat16"
-  attn_implementation: "flash_attention_2"
+  attn_implementation: "sdpa"
   num_layers: 64
 
 knockout:

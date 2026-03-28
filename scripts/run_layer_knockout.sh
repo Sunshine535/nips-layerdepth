@@ -7,8 +7,7 @@ if [ -f "$_PROJ_ROOT/.venv/bin/activate" ]; then source "$_PROJ_ROOT/.venv/bin/a
 export PATH="$HOME/.local/bin:$PATH"
 
 # ─── LayerDepth Knockout Experiment Launcher (8x A100-80GB) ───
-export HF_ENDPOINT='https://hf-mirror.com'
-export HF_HOME="${HF_HOME:-/home/nwh/.cache/huggingface}"
+export HF_HOME="${HF_HOME:-$HOME/.cache/huggingface}"
 export TRANSFORMERS_CACHE="$HF_HOME/hub"
 export WANDB_PROJECT="layerdepth"
 export NCCL_P2P_DISABLE=0

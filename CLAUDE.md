@@ -89,4 +89,3 @@ FORCE_RERUN=1 bash run.sh
 - Activate: `source .venv/bin/activate`
 - Code dir: 待确认
 - Background: `screen -dmS layerdepth bash -c '...'`
-- HF mirror: `export HF_ENDPOINT=https://hf-mirror.com`

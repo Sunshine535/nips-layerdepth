@@ -13,13 +13,12 @@ echo " Project: $(basename "$PROJ_DIR")"
 echo " Time:    $(date)"
 echo "============================================================"
 
-# Step 1: Activate venv (setup only if missing)
+# Step 1: Activate venv if present; otherwise use system Python
 if [ -f "$PROJ_DIR/.venv/bin/activate" ]; then
     source "$PROJ_DIR/.venv/bin/activate"
+    echo "[env] Activated venv: $PROJ_DIR/.venv"
 else
-    echo "[1/2] .venv not found. Running setup.sh..."
-    bash setup.sh
-    source "$PROJ_DIR/.venv/bin/activate"
+    echo "[env] No .venv found, using system Python"
 fi
 
 # Step 2: Quick dependency check
